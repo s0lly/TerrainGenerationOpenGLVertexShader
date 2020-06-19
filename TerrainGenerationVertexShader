@@ -1,0 +1,78 @@
+#version 450 core
+
+layout (location = 0) in vec4 vertexLoc;
+
+uniform mat4 projView;
+
+out vec4 vertLoc;
+out vec2 textureCoords;
+
+mat4 RotationX4(float r);
+mat4 Translation4(vec4 move);
+
+uniform sampler2D screenTexture;
+
+
+void main()
+{
+	
+
+	mat4 modelMatrix = RotationX4(-3.1415926f / 2.0f);
+
+	int lod = 2048;
+
+	vec4 modelAdjustVertexLoc = vertexLoc + vec4(gl_InstanceID % lod, gl_InstanceID / lod, 0.0f, 1.0f);
+	textureCoords = vec2(modelAdjustVertexLoc.x / float(lod), modelAdjustVertexLoc.y / float(lod));
+	float height = texture(screenTexture, textureCoords).r * 1.0f - 0.5f;
+
+
+	vec4 translatedVertexLoc = vec4(gl_InstanceID % lod * 255.0f, 0.0f, -gl_InstanceID / lod * 255.0f, 1.0f);
+	mat4 worldMatrix = Translation4(translatedVertexLoc);
+
+
+
+	vec4 modelVertexLoc = vertexLoc;
+	modelVertexLoc.x = modelVertexLoc.x * 255.0f;
+	modelVertexLoc.y = modelVertexLoc.y * 255.0f;
+	modelVertexLoc.z = height * 255.0f * 255.0f;
+
+
+    gl_Position = projView * worldMatrix * modelMatrix * modelVertexLoc;
+    vertLoc = worldMatrix * modelMatrix * modelVertexLoc;
+}
+
+
+mat4 RotationX4(float r)
+{
+	float cosR = cos(r);
+	float sinR = sin(r);
+
+	mat4 placeholderX;
+
+	placeholderX[1][1] = cosR;
+	placeholderX[2][1] = -sinR;
+	placeholderX[1][2] = sinR;
+	placeholderX[2][2] = cosR;
+	placeholderX[0][0] = 1.0f;
+
+	placeholderX[3][3] = 1.0f;
+
+	return placeholderX;
+}
+
+
+mat4 Translation4(vec4 move)
+{
+	mat4 placeholder;
+
+	placeholder[3][0] = move.x;
+	placeholder[3][1] = move.y;
+	placeholder[3][2] = move.z;
+
+	placeholder[0][0] = 1.0f;
+	placeholder[1][1] = 1.0f;
+	placeholder[2][2] = 1.0f;
+	placeholder[3][3] = 1.0f;
+
+	return placeholder;
+}
