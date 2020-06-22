@@ -2,10 +2,21 @@
 
 layout (location = 0) in vec4 vertexLoc;
 
+uniform int cellI;
+uniform int cellJ;
+uniform int lod;
+uniform int xNextLower;
+uniform int yNextLower;
+uniform int xBeforeLower;
+uniform int yBeforeLower;
+uniform float time;
 uniform mat4 projView;
+uniform int viewType;
 
 out vec4 vertLoc;
 out vec2 textureCoords;
+out float lodFloat;
+out float viewTypeFloat;
 
 mat4 RotationX4(float r);
 mat4 Translation4(vec4 move);
@@ -15,30 +26,65 @@ uniform sampler2D screenTexture;
 
 void main()
 {
-	
-
 	mat4 modelMatrix = RotationX4(-3.1415926f / 2.0f);
 
-	int lod = 2048;
+	float scalingFactorLOD = 2048.0f / float(lod);
 
-	vec4 modelAdjustVertexLoc = vertexLoc + vec4(gl_InstanceID % lod, gl_InstanceID / lod, 0.0f, 1.0f);
+	vec4 modelAdjustVertexLoc = vertexLoc + vec4(gl_InstanceID % (int(32.0f / scalingFactorLOD)) + float(cellI) * 32.0f / scalingFactorLOD, gl_InstanceID / (int(32.0f / scalingFactorLOD)) + float(cellJ) * 32.0f / scalingFactorLOD, 0.0f, 1.0f);
 	textureCoords = vec2(modelAdjustVertexLoc.x / float(lod), modelAdjustVertexLoc.y / float(lod));
 	float height = texture(screenTexture, textureCoords).r * 1.0f - 0.5f;
 
+	if ((xNextLower == 1 && ((gl_InstanceID % (int(32.0f / scalingFactorLOD)) == (int(32.0f / scalingFactorLOD)) - 1) && vertexLoc.x > 0.99f)) || (xBeforeLower == 1 && ((gl_InstanceID % (int(32.0f / scalingFactorLOD)) == 0) && vertexLoc.x < 0.01f)))
+	{
+		if (((gl_InstanceID / (int(32.0f / scalingFactorLOD)) % 2) == 0 && vertexLoc.y > 0.99f) || ((gl_InstanceID / (int(32.0f / scalingFactorLOD)) % 2) == 1 && vertexLoc.y <  0.01f))
+		{
+			vec4 modelAdjustVertexLocUp = vertexLoc + vec4(gl_InstanceID % (int(32.0f / scalingFactorLOD)) + float(cellI) * 32.0f / scalingFactorLOD, gl_InstanceID / (int(32.0f / scalingFactorLOD)) + 1.0f + float(cellJ) * 32.0f / scalingFactorLOD, 0.0f, 1.0f);
+			vec2 textureCoordsUp = vec2(modelAdjustVertexLocUp.x / float(lod), modelAdjustVertexLocUp.y / float(lod));
 
-	vec4 translatedVertexLoc = vec4(gl_InstanceID % lod * 255.0f, 0.0f, -gl_InstanceID / lod * 255.0f, 1.0f);
+			vec4 modelAdjustVertexLocDown = vertexLoc + vec4(gl_InstanceID % (int(32.0f / scalingFactorLOD)) + float(cellI) * 32.0f / scalingFactorLOD, gl_InstanceID / (int(32.0f / scalingFactorLOD)) - 1.0f + float(cellJ) * 32.0f / scalingFactorLOD, 0.0f, 1.0f);
+			vec2 textureCoordsDown = vec2(modelAdjustVertexLocDown.x / float(lod), modelAdjustVertexLocDown.y / float(lod));
+
+
+			height = ((texture(screenTexture, textureCoordsUp).r * 1.0f - 0.5f) + (texture(screenTexture, textureCoordsDown).r * 1.0f - 0.5f)) / 2.0f;
+		}
+	}
+
+
+
+	if ((yNextLower == 1 && ((gl_InstanceID / (int(32.0f / scalingFactorLOD)) == (int(32.0f / scalingFactorLOD)) - 1) && vertexLoc.y > 0.99f)) || (yBeforeLower == 1 && ((gl_InstanceID / (int(32.0f / scalingFactorLOD)) == 0) && vertexLoc.y < 0.01f)))
+	{
+		if (((gl_InstanceID % (int(32.0f / scalingFactorLOD)) % 2) == 0 && vertexLoc.x > 0.99f) || ((gl_InstanceID % (int(32.0f / scalingFactorLOD)) % 2) == 1 && vertexLoc.x <  0.01f))
+		{
+			vec4 modelAdjustVertexLocUp = vertexLoc + vec4(gl_InstanceID % (int(32.0f / scalingFactorLOD)) + 1.0f + float(cellI) * 32.0f / scalingFactorLOD, gl_InstanceID / (int(32.0f / scalingFactorLOD)) + float(cellJ) * 32.0f / scalingFactorLOD, 0.0f, 1.0f);
+			vec2 textureCoordsUp = vec2(modelAdjustVertexLocUp.x / float(lod), modelAdjustVertexLocUp.y / float(lod));
+
+			vec4 modelAdjustVertexLocDown = vertexLoc + vec4(gl_InstanceID % (int(32.0f / scalingFactorLOD)) - 1.0f + float(cellI) * 32.0f / scalingFactorLOD, gl_InstanceID / (int(32.0f / scalingFactorLOD)) + float(cellJ) * 32.0f / scalingFactorLOD, 0.0f, 1.0f);
+			vec2 textureCoordsDown = vec2(modelAdjustVertexLocDown.x / float(lod), modelAdjustVertexLocDown.y / float(lod));
+
+
+			height = ((texture(screenTexture, textureCoordsUp).r * 1.0f - 0.5f) + (texture(screenTexture, textureCoordsDown).r * 1.0f - 0.5f)) / 2.0f;
+		}
+	}
+
+
+
+	vec4 translatedVertexLoc = vec4(((gl_InstanceID % (int(32.0f / scalingFactorLOD))) + float(cellI) * 32.0f / scalingFactorLOD) * 255.0f * scalingFactorLOD, 0.0f, -((gl_InstanceID / (int(32.0f / scalingFactorLOD))) + float(cellJ) * 32.0f / scalingFactorLOD) * 255.0f * scalingFactorLOD, 1.0f);
 	mat4 worldMatrix = Translation4(translatedVertexLoc);
 
 
 
 	vec4 modelVertexLoc = vertexLoc;
-	modelVertexLoc.x = modelVertexLoc.x * 255.0f;
-	modelVertexLoc.y = modelVertexLoc.y * 255.0f;
-	modelVertexLoc.z = height * 255.0f * 255.0f;
+	modelVertexLoc.x = modelVertexLoc.x * 255.0f * scalingFactorLOD;
+	modelVertexLoc.y = modelVertexLoc.y * 255.0f * scalingFactorLOD;
+	modelVertexLoc.z = height * 255.0f * 155.0f;
 
 
     gl_Position = projView * worldMatrix * modelMatrix * modelVertexLoc;
     vertLoc = worldMatrix * modelMatrix * modelVertexLoc;
+
+	lodFloat = float(lod);
+
+	viewTypeFloat = float(viewType);
 }
 
 
